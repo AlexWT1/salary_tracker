@@ -1,2 +1,18 @@
-__pycache__
-salary.db
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs, DBs (если не часть проекта)
+*.log
+*.db
