@@ -19,7 +19,7 @@ Button {
     border: solid grey;
 }
 
-QuestionDialog, OrgSettingsScreen, InputDialog {
+QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {
     align: center middle;
 }
 
@@ -102,4 +102,12 @@ QuestionDialog, OrgSettingsScreen, InputDialog {
 
 .input-setting {
     column-span: 3;
+}
+
+.icon-button {
+    width: 5;
+    height: 3;
+    border: none;
+    background: transparent;
+    color: $text;
 }

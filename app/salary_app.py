@@ -3,10 +3,11 @@ from textual.widgets import Header, Footer, Button, DataTable, Static
 from textual.containers import Horizontal, Vertical
 from textual.coordinate import Coordinate
 
-# Импортируем экраны
+
 from .screens.input_dialog import InputDialog
 from .screens.question_dialog import QuestionDialog
 from .screens.org_settings_screen import OrgSettingsScreen
+from .screens.about_screen import AboutScreen
 
 
 class SalaryApp(App):
@@ -17,7 +18,8 @@ class SalaryApp(App):
         ("i", "result_financess", "Итого"),
         ("n", "open_settings", "Настройки"),
         ("c", "change", "Изменить"),
-        ('a', 'add', "Добавить")
+        ('a', 'add', "Добавить"),
+        ('u', 'open_about', 'О версии')
     ]
 
     def __init__(self, db):
@@ -33,6 +35,7 @@ class SalaryApp(App):
                 Button("Удалить", variant="error", id="delete"),
                 Static(classes="separator"),
                 Button("Настройки", variant="primary", id="settings"),
+                Button("❓", id="about", variant="default", classes="icon-button"),
                 classes="buttons_panel"
             ),
             DataTable(classes="salaries_list")
@@ -172,3 +175,7 @@ class SalaryApp(App):
     @on(Button.Pressed, "#settings")
     def action_open_settings(self):
         self.push_screen(OrgSettingsScreen())
+
+    @on(Button.Pressed, "#about")
+    def action_open_about(self):
+        self.push_screen(AboutScreen())
