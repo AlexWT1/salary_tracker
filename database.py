@@ -1,7 +1,14 @@
-import pathlib
+from platformdirs import user_data_dir
+from pathlib import Path
 import sqlite3
 
-DATABASE_PATH = pathlib.Path(__file__).parent / "salary.db"
+APP_NAME = "SalaryTracker"
+APP_AUTHOR = "SalaryAuthor"
+
+data_dir = Path(user_data_dir(APP_NAME, APP_AUTHOR))
+data_dir.mkdir(parents=True, exist_ok=True)
+
+DATABASE_PATH = data_dir / "salary.db"
 
 class Database:
     def __init__(self, db_path=DATABASE_PATH):
