@@ -1,0 +1,16 @@
+Разработка в ветке feature/
+
+git add <изменения>
+git commit -m "описание"
+git push -u origin feature/<название>
+
+dev После ревью и одобрения — Squash and merge pull request из feature/<название> в dev с удалением feature/<название>
+
+git checkout dev
+git branch -d feature/<название>
+git fetch origin
+git reset --hard origin/dev
+
+git checkout master
+git merge dev
+git push
