@@ -14,7 +14,7 @@ class SalaryApp(App):
     BINDINGS = [
         ("m", "toggle_dark", "Поменять тему"),
         ("q", "request_quit", "Выйти"),
-        # ("i", "result_financess", "Итого"),
+        ("i", "result_financess", "Итого"),
         ("n", "open_settings", "Настройки"),
         ("c", "change", "Изменить"),
         ('a', 'add', "Добавить")
@@ -76,26 +76,26 @@ class SalaryApp(App):
     def action_setting_screen(self):
         self.push_screen(OrgSettingsScreen())
 
-    # def action_result_financess(self):
-    #     data_table = self.query_one(DataTable)
+    def action_result_financess(self):
+        data_table = self.query_one(DataTable)
 
-    #     if data_table.row_count == 0:
-    #         self.notify("Таблица пуста", severity="warning")
-    #         return
+        if data_table.row_count == 0:
+            self.notify("Таблица пуста", severity="warning")
+            return
 
-    #     total = 0.0
-    #     last_col_index = len(data_table.ordered_columns) - 1
+        total = 0.0
+        last_col_index = len(data_table.ordered_columns) - 1
 
-    #     for row_index in range(data_table.row_count):
-    #         coord = Coordinate(row_index, last_col_index)
-    #         value = data_table.get_cell_at(coord)
+        for row_index in range(data_table.row_count):
+            coord = Coordinate(row_index, last_col_index)
+            value = data_table.get_cell_at(coord)
 
-    #         try:
-    #             total += float(value)
-    #         except (ValueError, TypeError):
-    #             continue 
+            try:
+                total += float(value)
+            except (ValueError, TypeError):
+                continue 
 
-    #     self.notify(f"Всего заработано по организации: {total:,.2f}", severity="success")
+        self.notify(f"Всего заработано по организации: {total:,.2f}", severity="success")
                 
 
     @on(Button.Pressed, "#add")
