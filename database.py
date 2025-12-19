@@ -8,7 +8,6 @@ APP_AUTHOR = "SalaryAuthor"
 data_dir = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 data_dir.mkdir(parents=True, exist_ok=True)
 
-
 DATABASE_PATH = data_dir / "salary.db"
 
 class Database:
