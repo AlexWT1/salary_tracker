@@ -127,7 +127,7 @@ class SalaryApp(App):
 
         def check_answer(accepted):
             if accepted and row_key:
-                self.db.delete_financess(id=row_key.value)
+                self.db.delete_financess(id_=row_key.value)
                 salaries_list.remove_row(row_key)
 
         data = salaries_list.get_row(row_key)[0]
@@ -150,11 +150,11 @@ class SalaryApp(App):
             if result and result['row_key']:
                 # Обновляем БД
                 self.db.update_financess(
-                    id=result['row_key'].value,
+                    id_=result['row_key'].value,
                     data=result['date'],
                     salary=result['salary'],
                     advance=result['advance'],
-                    sum=result['total']
+                    sum_=result['total']
                 )
 
                 # Обновляем таблицу
