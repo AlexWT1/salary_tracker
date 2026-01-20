@@ -19,6 +19,10 @@ Button {
     border: solid grey;
 }
 
+#back, #add_record {
+    width: 50%;
+}
+
 QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {
     align: center middle;
 }
@@ -111,3 +115,4 @@ QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {
     background: transparent;
     color: $text;
 }
+

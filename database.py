@@ -143,6 +143,12 @@ class Database:
                 except ValueError:
                     continue
             return result
+    def get_record_by_id(self, record_id: int):
+        with SessionLocal() as session:
+            rec = session.get(FinancialRecord, record_id)
+            if rec:
+                return (rec.id, rec.date, rec.amount, rec.category)
+            return None
 
     def add_record(self, date: str, amount: float, category: str):
         with SessionLocal() as session:
@@ -165,3 +171,22 @@ class Database:
                 rec.amount = amount
                 rec.category = category
                 session.commit()
+    
+    def has_salary_or_advance_in_month(self, year_month: str, category: str) -> bool:
+        """
+        Проверяет, существует ли уже запись с категорией 'salary' или 'advance'
+        в указанном месяце (формат 'YYYY-MM').
+        """
+        if category not in ("salary", "advance"):
+            return False  # для 'other' ограничение не применяется
+
+        with SessionLocal() as session:
+            records = session.execute(select(FinancialRecord)).scalars().all()
+            for r in records:
+                try:
+                    rec_date = datetime.strptime(r.date, "%Y-%m-%d")
+                    if rec_date.strftime("%Y-%m") == year_month and r.category == category:
+                        return True
+                except ValueError:
+                    continue
+            return False

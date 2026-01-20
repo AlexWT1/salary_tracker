@@ -5,16 +5,22 @@ from textual.containers import Grid
 from textual.screen import Screen
 
 class AddRecordDialog(Screen):
-    def __init__(self, is_edit=False, record=None, *args, **kwargs):
+    def __init__(self, is_edit=False, record=None, month_prefix=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_edit = is_edit
         self.record = record
+        self.month_prefix = month_prefix
         self.initial_category = record[3] if is_edit else "salary"
 
     def compose(self):
         title = "Изменить запись" if self.is_edit else "Добавить доход"
-        date_val = self.record[1] if self.is_edit else ""
-        amount_val = str(self.record[2]) if self.is_edit else ""
+        if self.is_edit:
+            date_val = self.record[1]
+            amount_val = str(self.record[2])
+        else:
+            # Автоматически подставляем дату: месяц + "-01"
+            date_val = f"{self.month_prefix}-" if self.month_prefix else ""
+            amount_val = ""
 
         yield Grid(
             Label(title, id="title"),
@@ -33,13 +39,11 @@ class AddRecordDialog(Screen):
         )
 
     def on_mount(self):
-        # Устанавливаем начальное состояние
-        if self.initial_category == "salary":
-            self.query_one("#chk_salary", Checkbox).value = True
-        elif self.initial_category == "advance":
-            self.query_one("#chk_advance", Checkbox).value = True
-        else:
-            self.query_one("#chk_other", Checkbox).value = True
+        if self.month_prefix and not self.is_edit:
+            if self.app.db.has_salary_or_advance_in_month(self.month_prefix, "salary"):
+                self.query_one("#chk_salary", Checkbox).disabled = True
+            if self.app.db.has_salary_or_advance_in_month(self.month_prefix, "advance"):
+                self.query_one("#chk_advance", Checkbox).disabled = True
 
     def _sync_checkboxes(self, changed_id: str):
         """Снимает галочки со всех, кроме changed_id"""
@@ -81,7 +85,8 @@ class AddRecordDialog(Screen):
 
             try:
                 from datetime import datetime
-                datetime.strptime(date, "%Y-%m-%d")
+                dt = datetime.strptime(date, "%Y-%m-%d")
+                year_month = dt.strftime("%Y-%m")
             except ValueError:
                 self.notify("Неверный формат даты (используйте ГГГГ-ММ-ДД)", severity="error")
                 return
@@ -91,6 +96,14 @@ class AddRecordDialog(Screen):
                 "amount": amount,
                 "category": category
             }
+
+            if category in ("salary", "advance"):
+                if self.app.db.has_salary_or_advance_in_month(year_month, category):
+                    cat_name = "зарплата" if category == "salary" else "аванс"
+                    self.notify(f"В этом месяце уже есть запись '{cat_name}'. Нельзя добавить вторую.", severity="error")
+                    return
+
+            
             if self.is_edit:
                 result["id"] = self.record[0]
             self.dismiss(result)

@@ -1,13 +1,15 @@
 # app/screens/month_records_screen.py
+from textual.app import App, on
 
-from textual.screen import ModalScreen
+from textual.screen import ModalScreen, Screen
 from textual.widgets import DataTable, Header, Footer, Button, Label
+from textual.containers import Horizontal
 from textual.containers import Vertical
 from .add_record_dialog import AddRecordDialog
 from .question_dialog import QuestionDialog
 
 
-class MonthRecordsScreen(ModalScreen):
+class MonthRecordsScreen(Screen):
     def __init__(self, month: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.month = month  # например: "2025-03"
@@ -16,7 +18,11 @@ class MonthRecordsScreen(ModalScreen):
         yield Header()
         yield Label(f"Записи за {self.month}", id="month-title")
         yield DataTable(id="month_records")
-        yield Button("Добавить запись", id="add_record", variant="success")
+        yield Horizontal(
+            Button("Добавить запись", id="add_record", variant="success"),
+            Button("Назад", id="back", variant="default"),
+            classes="button-row"
+        )
         yield Footer()
 
     def on_mount(self):
@@ -32,61 +38,58 @@ class MonthRecordsScreen(ModalScreen):
             cat_label = {"salary": "Зарплата", "advance": "Аванс", "other": "Другое"}[category]
             table.add_row(date, f"{amount:.2f}", cat_label, key=id_)
 
+
+        
     def on_data_table_row_selected(self, event):
-        record_id = event.row_key.value
-        row = self.query_one("#month_records").get_row(record_id)
-        date, amount_str, cat_label = row
-        amount = float(amount_str.replace(",", ""))
-        category = {"Зарплата": "salary", "Аванс": "advance", "Другое": "other"}[cat_label]
+        """Обрабатывает клик по строке — открывает диалог редактирования"""
+        record_id = event.row_key.value  # ID записи из БД
 
-        record = (record_id, date, amount, category)
+        # Получаем запись напрямую из базы данных
+        record_data = self.app.db.get_record_by_id(record_id)
+        if record_data is None:
+            self.notify("Запись не найдена", severity="error")
+            self._load_records()
+            return
 
+        # Распаковываем: (id, date, amount, category)
+        id_, date, amount, category = record_data
+        record = (id_, date, amount, category)
+
+        # Открываем диалог редактирования
         def handle_update(result):
             if result is not None:
-                if result.get("id") is not None:
-                    # Обновление
-                    self.app.db.update_record(
-                        id_=result["id"],
-                        date=result["date"],
-                        amount=result["amount"],
-                        category=result["category"]
-                    )
-                else:
-                    # Новая запись (если добавлять из этого экрана — опционально)
-                    pass
-                self._load_records()  # перезагрузить список
-
-        self.app.push_screen(AddRecordDialog(is_edit=True, record=record), handle_update)
-
-    def on_key(self, event):
-        if event.key == "delete":
-            self._delete_selected_record()
-
-    def _delete_selected_record(self):
-        table = self.query_one("#month_records", DataTable)
-        if table.cursor_row is None:
-            return
-        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
-        if not row_key:
-            return
-
-        record_id = row_key.value
-        row = table.get_row(row_key)
-        date = row[0]
-
-        def confirm_delete(should_delete):
-            if should_delete:
-                self.app.db.delete_record(record_id)
+                # Обновляем запись в БД
+                self.app.db.update_record(
+                    id_=result["id"],
+                    date=result["date"],
+                    amount=result["amount"],
+                    category=result["category"]
+                )
+                # Перезагружаем список
                 self._load_records()
 
         self.app.push_screen(
-            QuestionDialog(f"Удалить запись от {date}?"),
-            confirm_delete
+            AddRecordDialog(is_edit=True, record=record),
+            handle_update
         )
+
+    
     def on_button_pressed(self, event):
         if event.button.id == "add_record":
             def handle_new(result):
                 if result:
-                    self.app.db.add_record(result["date"], result["amount"], result["category"])
+                    self.app.db.add_record(
+                        result["date"],
+                        result["amount"],
+                        result["category"]
+                    )
                     self._load_records()
-            self.app.push_screen(AddRecordDialog(), handle_new)
+            self.app.push_screen(AddRecordDialog(month_prefix=self.month), handle_new)
+
+        elif event.button.id == "back":
+            self.dismiss(True)
+    
+    def on_key(self, event):
+        if event.key == "escape":
+            self.dismiss(True)
+            event.stop()  # предотвращает стандартное поведение
