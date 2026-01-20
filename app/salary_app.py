@@ -8,6 +8,9 @@ from .screens.input_dialog import InputDialog
 from .screens.question_dialog import QuestionDialog
 from .screens.org_settings_screen import OrgSettingsScreen
 from .screens.about_screen import AboutScreen
+from .screens.month_detail_screen import MonthDetailScreen
+from .screens.add_record_dialog import AddRecordDialog
+from .screens.month_records_screen import MonthRecordsScreen
 
 
 class SalaryApp(App):
@@ -42,20 +45,34 @@ class SalaryApp(App):
         )
         yield Footer()
 
+    # def on_mount(self):
+    #     self.title = "Доходы"
+    #     table = self.query_one(DataTable)
+    #     table.add_columns("Дата", "Зарплата", "Аванс", "Итог")
+    #     table.cursor_type = "row"
+    #     table.zebra_stripes = True
+    #     table.focus()
+
+    #     if not self.db.get_organization_name():
+    #         self.sub_title = "Первоначальная настройка"
+    #         self.push_screen(OrgSettingsScreen())
+    #     else:
+    #         self._update_subtitle()
+    #         self._load_salaries()
     def on_mount(self):
         self.title = "Доходы"
         table = self.query_one(DataTable)
-        table.add_columns("Дата", "Зарплата", "Аванс", "Итог")
+        table.add_columns("Месяц", "Сумма")
         table.cursor_type = "row"
         table.zebra_stripes = True
-        table.focus()
+        self._update_subtitle()
+        self._load_monthly_view()
 
-        if not self.db.get_organization_name():
-            self.sub_title = "Первоначальная настройка"
-            self.push_screen(OrgSettingsScreen())
-        else:
-            self._update_subtitle()
-            self._load_salaries()
+    def _load_monthly_view(self):
+        table = self.query_one(DataTable)
+        table.clear()
+        for month, total in self.db.get_monthly_summary():
+            table.add_row(month, f"{total:,.2f}", key=month)
 
     def _update_subtitle(self):
         org = self.db.get_organization_name() or ""
@@ -101,22 +118,41 @@ class SalaryApp(App):
         self.notify(f"Всего заработано по организации: {total:,.2f}", severity="success")
                 
 
+    # @on(Button.Pressed, "#add")
+    # def action_add(self):
+    #     def handle_result(result):
+    #         if result:
+    #             self.db.add_financess((result['date'], result['salary'], result['advance'], result['total']))
+    #             new_id, *data = self.db.get_last_financess()
+    #             table = self.query_one(DataTable)
+    #             table.add_row(
+    #                 result['date'],
+    #                 f"{result['salary']:.2f}",
+    #                 f"{result['advance']:.2f}",
+    #                 f"{result['total']:.2f}",
+    #                 key=new_id
+    #             )
+
+    #     self.push_screen(InputDialog(is_edit=False), handle_result)
+
     @on(Button.Pressed, "#add")
     def action_add(self):
         def handle_result(result):
             if result:
-                self.db.add_financess((result['date'], result['salary'], result['advance'], result['total']))
-                new_id, *data = self.db.get_last_financess()
-                table = self.query_one(DataTable)
-                table.add_row(
-                    result['date'],
-                    f"{result['salary']:.2f}",
-                    f"{result['advance']:.2f}",
-                    f"{result['total']:.2f}",
-                    key=new_id
-                )
+                self.db.add_record(result["date"], result["amount"], result["category"])
+                self._load_monthly_view()
+        self.push_screen(AddRecordDialog(), handle_result)
 
-        self.push_screen(InputDialog(is_edit=False), handle_result)
+    @on(DataTable.RowSelected)
+    def on_row_selected(self, event: DataTable.RowSelected):
+        month_key = event.row_key.value  # например: "2025-03"
+        breakdown = self.db.get_monthly_breakdown(month_key)
+        self.push_screen(MonthDetailScreen(month_key, breakdown))
+
+    @on(DataTable.RowSelected)
+    def on_month_selected(self, event):
+        month = event.row_key.value  # "2025-03"
+        self.push_screen(MonthRecordsScreen(month))
 
     @on(Button.Pressed, "#delete")
     def action_delete(self):
