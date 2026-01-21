@@ -1,20 +1,29 @@
 # app/screens/add_record_dialog.py
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from salary_app import SalaryApp
+
 
 from textual.widgets import Button, Label, Input, Checkbox, Static
 from textual.containers import Grid
 from textual.screen import Screen
 
 class AddRecordDialog(Screen):
+    @property
+    def app(self) -> SalaryApp:
+        return super().app  # type: ignore
+    
     def __init__(self, is_edit=False, record=None, month_prefix=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_edit = is_edit
         self.record = record
         self.month_prefix = month_prefix
-        self.initial_category = record[3] if is_edit else "salary"
 
     def compose(self):
         title = "Изменить запись" if self.is_edit else "Добавить доход"
         if self.is_edit:
+            assert self.record is not None
+
             date_val = self.record[1]
             amount_val = str(self.record[2])
         else:
@@ -22,7 +31,8 @@ class AddRecordDialog(Screen):
             date_val = f"{self.month_prefix}-" if self.month_prefix else ""
             amount_val = ""
 
-        yield Grid(
+         # Формируем список виджетов
+        widgets = [
             Label(title, id="title"),
             Label("Дата (ГГГГ-ММ-ДД):", classes="label"),
             Input(value=date_val, placeholder="2025-03-15", id="date"),
@@ -35,8 +45,13 @@ class AddRecordDialog(Screen):
             Static(),
             Button("Отмена", variant="warning", id="cancel"),
             Button("Сохранить", variant="success", id="save"),
-            id="add-record-dialog"
-        )
+        ]
+
+        # Добавляем кнопку "Удалить" ТОЛЬКО при редактировании
+        if self.is_edit:
+            widgets.append(Button("Удалить", variant="error", id="delete_record"))
+
+        yield Grid(*widgets, id="add-record-dialog")
 
     def on_mount(self):
         if self.month_prefix and not self.is_edit:
@@ -54,8 +69,9 @@ class AddRecordDialog(Screen):
 
     def on_checkbox_changed(self, event: Checkbox.Changed):
         """Обрабатывает изменение любого чекбокса"""
-        if event.checkbox.value:  # только если поставили галочку
-            self._sync_checkboxes(event.checkbox.id)
+        checkbox = event.checkbox
+        if checkbox.value and checkbox.id is not None:
+            self._sync_checkboxes(checkbox.id)
 
     def on_button_pressed(self, event):
         if event.button.id == "save":
@@ -105,7 +121,23 @@ class AddRecordDialog(Screen):
 
             
             if self.is_edit:
+                assert self.record is not None
                 result["id"] = self.record[0]
             self.dismiss(result)
-        else:
+        elif event.button.id == "cancel":
             self.dismiss(None)
+        elif event.button.id == "delete_record":
+            assert self.record is not None
+
+            def confirm_delete(accepted):
+                assert self.record is not None
+
+                if accepted:
+                    # Передаём ID записи для удаления
+                    self.dismiss({"action": "delete", "id": self.record[0]})
+
+            from .question_dialog import QuestionDialog  # убедитесь, что путь правильный
+            self.app.push_screen(
+                QuestionDialog(f"Удалить запись от {self.record[1]}?"),
+                callback=confirm_delete
+            )

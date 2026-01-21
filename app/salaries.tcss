@@ -19,8 +19,12 @@ Button {
     border: solid grey;
 }
 
-#back, #add_record {
-    width: 50%;
+.button-row {
+    width: 100%;
+}
+
+#back, #add_record, #delete {
+    width: auto;
 }
 
 QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {

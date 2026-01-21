@@ -1,7 +1,8 @@
 from platformdirs import user_data_dir
 from pathlib import Path
-from sqlalchemy import create_engine, Column, Integer, String, Float, select
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine, select, delete
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Integer, String, Float
 from sqlalchemy.orm import sessionmaker
 
 from datetime import datetime
@@ -14,37 +15,30 @@ data_dir.mkdir(parents=True, exist_ok=True)
 DATABASE_PATH = data_dir / "salary_test.db"
 
 engine = create_engine(f"sqlite:///{DATABASE_PATH}", echo=False)
-Base = declarative_base()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-# class Salary(Base):
-#     __tablename__ = "salaries"
-#     id = Column(Integer, primary_key=True)
-#     data = Column(String)
-#     salary = Column(Float)
-#     advance = Column(Float)
-#     sum_ = Column(Float, name="sum")
+class Base(DeclarativeBase):
+    pass
 
 class FinancialRecord(Base):
     __tablename__ = "financial_records"
-    id = Column(Integer, primary_key=True)
-    date = Column(String, nullable=False) 
-    amount = Column(Float, nullable=False)
-    category = Column(String, nullable=False)
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
 
 class Setting(Base):
     __tablename__ = "settings"
-    key = Column(String, primary_key=True)
-    value = Column(String)
+    
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str | None] = mapped_column(String)
 
 
 Base.metadata.create_all(bind=engine)
 
 
 class Database:
-    def __init__(self, db_path=None):
-        pass
 
     def get_organization_name(self) -> str | None:
         with SessionLocal() as session:
@@ -105,11 +99,11 @@ class Database:
             for _, date_str, amount, _ in records:
                 try:
                     dt = datetime.strptime(date_str, "%Y-%m-%d")
-                    month_key = dt.strftime("%Y-%m")  # например: "2025-03"
+                    month_key = dt.strftime("%Y-%m")
                     monthly[month_key] += amount
                 except ValueError:
                     continue
-            return sorted(monthly.items())  # сортировка по дате
+            return sorted(monthly.items())
 
     def get_monthly_breakdown(self, year_month: str):
         """Возвращает словарь: {'salary': X, 'advance': Y, 'other': Z}"""
@@ -149,6 +143,14 @@ class Database:
             if rec:
                 return (rec.id, rec.date, rec.amount, rec.category)
             return None
+        
+
+    def delete_record_by_id(self, record_id: int):
+        with SessionLocal() as session:
+            record = session.get(FinancialRecord, record_id)
+            if record:
+                session.delete(record)
+                session.commit()
 
     def add_record(self, date: str, amount: float, category: str):
         with SessionLocal() as session:
@@ -156,12 +158,11 @@ class Database:
             session.add(new_rec)
             session.commit()
 
-    def delete_record(self, id_: int):
+    def delete_records_by_month(self, year_month: str):
         with SessionLocal() as session:
-            rec = session.get(FinancialRecord, id_)
-            if rec:
-                session.delete(rec)
-                session.commit()
+            stmt = delete(FinancialRecord).where(FinancialRecord.date.like(f"{year_month}-%"))
+            session.execute(stmt)
+            session.commit()
 
     def update_record(self, id_: int, date: str, amount: float, category: str):
         with SessionLocal() as session:
@@ -178,7 +179,7 @@ class Database:
         в указанном месяце (формат 'YYYY-MM').
         """
         if category not in ("salary", "advance"):
-            return False  # для 'other' ограничение не применяется
+            return False
 
         with SessionLocal() as session:
             records = session.execute(select(FinancialRecord)).scalars().all()

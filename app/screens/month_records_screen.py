@@ -1,5 +1,8 @@
 # app/screens/month_records_screen.py
-from textual.app import App, on
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from salary_app import SalaryApp
+
 
 from textual.screen import ModalScreen, Screen
 from textual.widgets import DataTable, Header, Footer, Button, Label
@@ -10,6 +13,10 @@ from .question_dialog import QuestionDialog
 
 
 class MonthRecordsScreen(Screen):
+    @property
+    def app(self) -> SalaryApp:
+        return super().app  # type: ignore
+    
     def __init__(self, month: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.month = month  # например: "2025-03"
@@ -21,6 +28,7 @@ class MonthRecordsScreen(Screen):
         yield Horizontal(
             Button("Добавить запись", id="add_record", variant="success"),
             Button("Назад", id="back", variant="default"),
+            Button("Удалить", variant="error", id="delete"),
             classes="button-row"
         )
         yield Footer()
@@ -34,7 +42,14 @@ class MonthRecordsScreen(Screen):
     def _load_records(self):
         table = self.query_one("#month_records", DataTable)
         table.clear()
-        for id_, date, amount, category in self.app.db.get_records_by_month(self.month):
+        
+        records = self.app.db.get_records_by_month(self.month)
+        
+        if not records:
+            self.app.pop_screen()
+            return
+
+        for id_, date, amount, category in records:
             cat_label = {"salary": "Зарплата", "advance": "Аванс", "other": "Другое"}[category]
             table.add_row(date, f"{amount:.2f}", cat_label, key=id_)
 
@@ -55,24 +70,32 @@ class MonthRecordsScreen(Screen):
         id_, date, amount, category = record_data
         record = (id_, date, amount, category)
 
-        # Открываем диалог редактирования
         def handle_update(result):
-            if result is not None:
-                # Обновляем запись в БД
+            if result is None:
+                return  # пользователь нажал "Отмена" или закрыл окно
+
+            # Проверяем, не является ли результат запросом на удаление
+            if isinstance(result, dict) and result.get("action") == "delete":
+                # Удаляем запись из БД
+                self.app.db.delete_record_by_id(result["id"])
+                # Обновляем таблицу
+                self._load_records()
+                self.notify("Запись удалена", severity="information")
+            else:
+                # Обычное обновление записи
                 self.app.db.update_record(
                     id_=result["id"],
                     date=result["date"],
                     amount=result["amount"],
                     category=result["category"]
                 )
-                # Перезагружаем список
                 self._load_records()
+                self.notify("Запись обновлена", severity="information")
 
         self.app.push_screen(
             AddRecordDialog(is_edit=True, record=record),
             handle_update
         )
-
     
     def on_button_pressed(self, event):
         if event.button.id == "add_record":
@@ -88,6 +111,14 @@ class MonthRecordsScreen(Screen):
 
         elif event.button.id == "back":
             self.dismiss(True)
+
+        elif event.button.id == "delete":
+            def confirm_delete(accepted):
+                if accepted:
+                    self.app.db.delete_records_by_month(self.month)
+                    self._load_records()
+                    self.dismiss()
+            self.app.push_screen(QuestionDialog(f"Удаить все записи за {self.month} ?"), confirm_delete)
     
     def on_key(self, event):
         if event.key == "escape":
