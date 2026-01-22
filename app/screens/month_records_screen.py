@@ -5,16 +5,16 @@ if TYPE_CHECKING:
 
 
 from textual.screen import ModalScreen, Screen
-from textual.widgets import DataTable, Header, Footer, Button, Label
-from textual.containers import Horizontal
+from textual.widgets import DataTable, Header, Footer, Button, Label, Rule
+from textual.containers import Horizontal, Grid
 from textual.containers import Vertical
 from .add_record_dialog import AddRecordDialog
 from .question_dialog import QuestionDialog
 
 
-class MonthRecordsScreen(Screen):
+class MonthRecordsScreen(ModalScreen):
     @property
-    def app(self) -> SalaryApp:
+    def app(self) -> "SalaryApp":
         return super().app  # type: ignore
     
     def __init__(self, month: str, *args, **kwargs):
@@ -22,16 +22,19 @@ class MonthRecordsScreen(Screen):
         self.month = month  # например: "2025-03"
 
     def compose(self):
-        yield Header()
-        yield Label(f"Записи за {self.month}", id="month-title")
-        yield DataTable(id="month_records")
-        yield Horizontal(
-            Button("Добавить запись", id="add_record", variant="success"),
-            Button("Назад", id="back", variant="default"),
-            Button("Удалить", variant="error", id="delete"),
-            classes="button-row"
+        yield Grid (
+            Button("Назад", id="back_record", variant="default"),
+            Label(f"Записи за {self.month}", id="month-title"),
+            Rule(),
+            DataTable(id="month_records"),
+            Rule(),
+            Horizontal(
+                Button("Добавить запись", id="add_record", variant="success"),
+                Button("Удалить", variant="error", id="delete_record"),
+                classes="button-row"
+            ),
+            id='modal-content'
         )
-        yield Footer()
 
     def on_mount(self):
         table = self.query_one("#month_records", DataTable)
@@ -109,10 +112,10 @@ class MonthRecordsScreen(Screen):
                     self._load_records()
             self.app.push_screen(AddRecordDialog(month_prefix=self.month), handle_new)
 
-        elif event.button.id == "back":
+        elif event.button.id == "back_record":
             self.dismiss(True)
 
-        elif event.button.id == "delete":
+        elif event.button.id == "delete_record":
             def confirm_delete(accepted):
                 if accepted:
                     self.app.db.delete_records_by_month(self.month)

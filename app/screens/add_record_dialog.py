@@ -10,7 +10,7 @@ from textual.screen import Screen
 
 class AddRecordDialog(Screen):
     @property
-    def app(self) -> SalaryApp:
+    def app(self) -> "SalaryApp":
         return super().app  # type: ignore
     
     def __init__(self, is_edit=False, record=None, month_prefix=None, *args, **kwargs):

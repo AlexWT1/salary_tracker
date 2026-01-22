@@ -23,9 +23,9 @@ Button {
     width: 100%;
 }
 
-#back, #add_record, #delete {
-    width: auto;
-}
+# #back, #add_record, #delete {
+#     width: auto;
+# }
 
 QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {
     align: center middle;
@@ -120,3 +120,40 @@ QuestionDialog, OrgSettingsScreen, InputDialog, AboutScreen {
     color: $text;
 }
 
+
+# MonthRecordsScreen
+MonthRecordsScreen {
+    align: center middle;
+}
+
+#modal-content {
+    layout: grid;
+    grid-size: 1 6;
+    width: 80%;
+    height: 60%;
+    align: center middle;
+    background: $surface;
+    border: solid $primary;
+    padding: 1 1;
+}
+
+#month-title {
+    width: 100%;
+    text-align: center;
+    color: white;
+}
+
+#month_records {
+    width: 100%;
+    height: 100%;
+}
+
+#back_record, #add_record, #delete_record {
+    width: auto;
+    height: auto
+}
+
+
+.button-row {
+    align: center middle;
+}
