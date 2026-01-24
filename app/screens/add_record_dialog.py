@@ -4,11 +4,11 @@ if TYPE_CHECKING:
     from salary_app import SalaryApp
 
 
-from textual.widgets import Button, Label, Input, Checkbox, Static
-from textual.containers import Grid
-from textual.screen import Screen
+from textual.widgets import Button, Label, Input, Checkbox, Static, Rule
+from textual.containers import Grid, Horizontal
+from textual.screen import ModalScreen
 
-class AddRecordDialog(Screen):
+class AddRecordDialog(ModalScreen):
     @property
     def app(self) -> "SalaryApp":
         return super().app  # type: ignore
@@ -34,20 +34,32 @@ class AddRecordDialog(Screen):
          # Формируем список виджетов
         widgets = [
             Label(title, id="title"),
-            Label("Дата (ГГГГ-ММ-ДД):", classes="label"),
-            Input(value=date_val, placeholder="2025-03-15", id="date"),
-            Label("Сумма:", classes="label"),
-            Input(value=amount_val, placeholder="10000", id="amount"),
+            Horizontal(
+                Label("Дата (ГГГГ-ММ-ДД):", classes="add_record_label"),
+                Input(value=date_val, placeholder="2025-03-15", id="date"),
+                classes="add_record_date"
+            ),
+             Horizontal(
+                Label("Сумма:", classes="add_record_label"),
+                Input(value=amount_val, placeholder="10000", id="amount"),
+                classes="add_record_summ"
+            ),
+          
             Label("Категория:", classes="label"),
-            Checkbox("Зарплата", id="chk_salary"),
-            Checkbox("Аванс", id="chk_advance"),
-            Checkbox("Другое", id="chk_other"),
-            Static(),
-            Button("Отмена", variant="warning", id="cancel"),
-            Button("Сохранить", variant="success", id="save"),
+            Horizontal(            
+                Checkbox("Зарплата", id="chk_salary"),
+                Checkbox("Аванс", id="chk_advance"),
+                Checkbox("Другое", id="chk_other"),
+                id="add_record_checkboxs"
+            ),
+            Rule(),
+            Horizontal(
+                Button("Отмена", variant="warning", id="add_record_cancel"),
+                Button("Сохранить", variant="success", id="add_record_save"),
+                id="add_record_buttons"
+            )
         ]
 
-        # Добавляем кнопку "Удалить" ТОЛЬКО при редактировании
         if self.is_edit:
             widgets.append(Button("Удалить", variant="error", id="delete_record"))
 
@@ -124,7 +136,7 @@ class AddRecordDialog(Screen):
                 assert self.record is not None
                 result["id"] = self.record[0]
             self.dismiss(result)
-        elif event.button.id == "cancel":
+        elif event.button.id == "add_record_cancel":
             self.dismiss(None)
         elif event.button.id == "delete_record":
             assert self.record is not None

@@ -157,3 +157,47 @@ MonthRecordsScreen {
 .button-row {
     align: center middle;
 }
+
+AddRecordDialog {
+    align: center middle;
+}
+
+#add-record-dialog{
+    layout: grid;
+    grid-size: 1 7;
+    width: 80%;
+    height: 60%;
+    align: center middle;
+    background: $surface;
+    border: solid $primary;
+    padding: 1 1;
+}
+
+.add_record_label {
+    width: 20%;
+}
+
+.add_record_date, .add_record_summ {
+    width: 100%;
+    height: 100%;
+}
+
+#add_record_checkboxs{
+    align: center middle;
+    width: 100%;
+    height: 100%;
+}
+
+#chk_salary, #chk_advance, #chk_other {
+    width: auto;
+    height: auto;
+}
+
+#add_record_buttons {
+    align: center middle;
+}
+
+#add_record_cancel, #add_record_save {
+    width: auto;
+    height: auto;
+}
