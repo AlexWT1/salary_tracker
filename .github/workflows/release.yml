@@ -1,4 +1,4 @@
-name: Build and Attach Binaries to Release
+name: Build and Attach Binaries to Release V2
 
 on:
   release:
