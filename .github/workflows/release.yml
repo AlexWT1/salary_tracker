@@ -8,86 +8,74 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            name: windows
-          - os: ubuntu-latest
-            name: linux
-    
-    runs-on: ${{ matrix.os }}
-    
+  build-windows:
+    runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: uv sync --frozen
-        shell: bash
+      - run: uv sync --frozen
 
-      - name: Build executable (Windows)
-        if: matrix.os == 'windows-latest'
-        run: uv run pyinstaller SalaryTracker.spec
+      - run: uv run pyinstaller SalaryTracker.spec
         shell: pwsh
 
-      - name: Build executable (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: uv run pyinstaller SalaryTracker.spec
-        shell: bash
-
-      # === КРИТИЧЕСКИ ВАЖНО: отдельный шаг ТОЛЬКО для Windows с правильной оболочкой ===
-      - name: Create Windows archive
-        if: matrix.os == 'windows-latest'
-        run: |
+      - run: |
+          Get-ChildItem -Path dist
           Compress-Archive -Path "dist\SalaryTracker.exe" -DestinationPath "SalaryTracker-windows.zip"
-        shell: pwsh  # ← ТОЛЬКО ТАК РАБОТАЕТ
+        shell: pwsh
 
-      # === Для Linux — bash ===
-      - name: Create Linux archive
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod +x dist/SalaryTracker
-          tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.name }}
-          path: |
-            SalaryTracker-windows.zip
-            SalaryTracker-linux.tar.gz
+          name: build-windows
+          path: SalaryTracker-windows.zip
 
-  attach-binaries:
-    needs: build
+  build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - run: uv run pyinstaller SalaryTracker.spec
+
+      - run: |
+          chmod +x dist/SalaryTracker
+          tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-linux
+          path: SalaryTracker-linux.tar.gz
+
+  attach-binaries:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Debug artifacts
-        run: |
-          echo "=== Artifacts content ==="
-          find artifacts/ -type f
-          ls -lh artifacts/
+      - run: |
+          echo "=== Artifacts ==="
+          find artifacts -type f
 
-      - name: Attach to release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/build-windows/SalaryTracker-windows.zip
