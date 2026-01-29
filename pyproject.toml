@@ -1,0 +1,13 @@
+[project]
+name = "salary-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "pyinstaller>=6.18.0",
+    "sqlalchemy>=2.0.45",
+    "textual>=7.3.0",
+    "textual-dev>=1.8.0",
+]
