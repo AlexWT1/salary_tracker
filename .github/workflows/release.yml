@@ -2,7 +2,7 @@ name: Build Binaries for Release
 
 on:
   release:
-    types: [published]  # Срабатывает ТОЛЬКО при публикации релиза
+    types: [published]
 
 permissions:
   contents: write
@@ -28,41 +28,41 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv (ultra-fast package manager)
+      - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
-      - name: Install project dependencies with uv
+      - name: Install dependencies
         run: uv sync --frozen
         shell: bash
 
-      # === СБОРКА: разные оболочки для разных ОС ===
       - name: Build executable (Windows)
         if: matrix.os == 'windows-latest'
         run: uv run pyinstaller SalaryTracker.spec
-        shell: pwsh  # PowerShell для Windows
+        shell: pwsh
 
       - name: Build executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: uv run pyinstaller SalaryTracker.spec
-        shell: bash  # Bash для Linux
+        shell: bash
 
-      # === АРХИВАЦИЯ: критически важно — правильные оболочки ===
-      - name: Create distributable archive (Windows)
+      # === КРИТИЧЕСКИ ВАЖНО: отдельный шаг ТОЛЬКО для Windows с правильной оболочкой ===
+      - name: Create Windows archive
         if: matrix.os == 'windows-latest'
         run: |
           Compress-Archive -Path "dist\SalaryTracker.exe" -DestinationPath "SalaryTracker-windows.zip"
-        shell: pwsh  # ← ОБЯЗАТЕЛЬНО pwsh для Compress-Archive
+        shell: pwsh  # ← ТОЛЬКО ТАК РАБОТАЕТ
 
-      - name: Create distributable archive (Linux)
+      # === Для Linux — bash ===
+      - name: Create Linux archive
         if: matrix.os == 'ubuntu-latest'
         run: |
           chmod +x dist/SalaryTracker
           tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
         shell: bash
 
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.name }}
@@ -74,25 +74,23 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download all build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Debug artifacts structure
+      - name: Debug artifacts
         run: |
-          echo "=== Artifacts directory ==="
-          ls -R artifacts/
-          echo "=== Checking file existence ==="
-          test -f artifacts/SalaryTracker-windows.zip && echo "✓ Windows ZIP found"
-          test -f artifacts/SalaryTracker-linux.tar.gz && echo "✓ Linux TAR.GZ found"
+          echo "=== Artifacts content ==="
+          find artifacts/ -type f
+          ls -lh artifacts/
 
-      - name: Attach binaries to GitHub Release
+      - name: Attach to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/SalaryTracker-windows.zip
-            artifacts/SalaryTracker-linux.tar.gz
+            artifacts/build-windows/SalaryTracker-windows.zip
+            artifacts/build-linux/SalaryTracker-linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
