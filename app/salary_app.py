@@ -26,7 +26,7 @@ class SalaryApp(App):
         ("n", "open_settings", "Настройки"),
         # ("c", "change", "Изменить"),
         # ('a', 'add', "Добавить"),
-        # ('u', 'open_about', 'О версии')
+        ('u', 'open_about', 'О версии')
     ]
 
     def __init__(self, db: Database):
@@ -42,27 +42,12 @@ class SalaryApp(App):
                 # Button("Удалить", variant="error", id="delete"),
                 # Static(classes="separator"),
                 Button("Настройки", variant="primary", id="settings"),
-                # Button("❓", id="about", variant="default", classes="icon-button"),
                 classes="buttons_panel"
             ),
             DataTable(id="salary_app_table",classes="salaries_list")
         )
         yield Footer()
 
-    # def on_mount(self):
-    #     self.title = "Доходы"
-    #     table = self.query_one(DataTable)
-    #     table.add_columns("Дата", "Зарплата", "Аванс", "Итог")
-    #     table.cursor_type = "row"
-    #     table.zebra_stripes = True
-    #     table.focus()
-
-    #     if not self.db.get_organization_name():
-    #         self.sub_title = "Первоначальная настройка"
-    #         self.push_screen(OrgSettingsScreen())
-    #     else:
-    #         self._update_subtitle()
-    #         self._load_salaries()
     def on_mount(self):
         self.title = "Доходы"
         table = self.query_one(DataTable)
@@ -107,44 +92,7 @@ class SalaryApp(App):
     def action_setting_screen(self):
         self.push_screen(OrgSettingsScreen())
 
-    # def action_result_financess(self):
-    #     data_table = self.query_one(DataTable)
-
-        # if data_table.row_count == 0:
-        #     self.notify("Таблица пуста", severity="warning")
-        #     return
-
-        # total = 0.0
-        # last_col_index = len(data_table.ordered_columns) - 1
-
-        # for row_index in range(data_table.row_count):
-        #     coord = Coordinate(row_index, last_col_index)
-        #     value = data_table.get_cell_at(coord)
-
-        #     try:
-        #         total += float(value)
-        #     except (ValueError, TypeError):
-        #         continue 
-
-        # self.notify(f"Всего заработано по организации: {total:,.2f}", severity="success")
                 
-
-    # @on(Button.Pressed, "#add")
-    # def action_add(self):
-    #     def handle_result(result):
-    #         if result:
-    #             self.db.add_financess((result['date'], result['salary'], result['advance'], result['total']))
-    #             new_id, *data = self.db.get_last_financess()
-    #             table = self.query_one(DataTable)
-    #             table.add_row(
-    #                 result['date'],
-    #                 f"{result['salary']:.2f}",
-    #                 f"{result['advance']:.2f}",
-    #                 f"{result['total']:.2f}",
-    #                 key=new_id
-    #             )
-
-    #     self.push_screen(InputDialog(is_edit=False), handle_result)
 
     @on(Button.Pressed, "#add")
     def action_add(self):
@@ -161,72 +109,16 @@ class SalaryApp(App):
         month = event.row_key.value
 
         def after_month_screen(result):
-            # result будет True, если нажали "Назад"
-            # или None, если закрыли через Escape / крестик
             if result is True:
                 self._load_monthly_view()
 
         self.push_screen(MonthRecordsScreen(month), after_month_screen)
     
 
-    # @on(Button.Pressed, "#delete")
-    # def action_delete(self):
-    #     salaries_list = self.query_one(DataTable)
-    #     row_key, _ = salaries_list.coordinate_to_cell_key(
-    #         salaries_list.cursor_coordinate
-    #     )
-
-    #     def check_answer(accepted):
-    #         if accepted and row_key:
-    #             self.db.delete_financess(id_=row_key.value)
-    #             salaries_list.remove_row(row_key)
-
-    #     data = salaries_list.get_row(row_key)[0]
-    #     self.push_screen(
-    #         QuestionDialog(f"Вы действительно хотите удалить запись от {data}"),
-    #         check_answer,
-    #     )
-
-    # @on(Button.Pressed, "#change")
-    # def action_change(self):
-    #     table = self.query_one(DataTable)
-    #     row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
-    #     if not row_key:
-    #         return
-
-    #     current_data = table.get_row(row_key)
-    #     date, salary, advance, total = [str(x) if isinstance(x, float) else x for x in current_data]
-
-    #     def handle_update(result):
-    #         if result and result['row_key']:
-    #             # Обновляем БД
-    #             self.db.update_financess(
-    #                 id_=result['row_key'].value,
-    #                 data=result['date'],
-    #                 salary=result['salary'],
-    #                 advance=result['advance'],
-    #                 sum_=result['total']
-    #             )
-
-    #             # Обновляем таблицу
-    #             table.remove_row(result['row_key'])
-    #             table.add_row(
-    #                 result['date'],
-    #                 f"{result['salary']:.2f}",
-    #                 f"{result['advance']:.2f}",
-    #                 f"{result['total']:.2f}",
-    #                 key=result['row_key'].value
-    #             )
-
-    #     self.push_screen(
-    #         InputDialog(is_edit=True, current=current_data, row_key=row_key),
-    #         handle_update
-    #     )
 
     @on(Button.Pressed, "#settings")
     def action_open_settings(self):
         self.push_screen(OrgSettingsScreen())
 
-    # @on(Button.Pressed, "#about")
-    # def action_open_about(self):
-    #     self.push_screen(AboutScreen())
+    def action_open_about(self):
+        self.push_screen(AboutScreen())
