@@ -1,4 +1,4 @@
-name: Build and Attach Binaries to Release
+name: Build Binaries for Release
 
 on:
   release:
@@ -9,97 +9,76 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build Windows binary
     runs-on: windows-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - run: uv sync --frozen
 
-      - name: Build exe with PyInstaller
-        run: uv run pyinstaller SalaryTracker.spec
+      - run: uv run pyinstaller SalaryTracker.spec
+        shell: pwsh
 
-      - name: Zip Windows binary
-        run: |
-          pwsh -Command "
-            Get-ChildItem dist;
-            Compress-Archive -Path 'dist\SalaryTracker.exe' -DestinationPath 'SalaryTracker-windows.zip'
-          "
+      - run: |
+          Get-ChildItem -Path dist
+          Compress-Archive -Path "dist\SalaryTracker.exe" -DestinationPath "SalaryTracker-windows.zip"
+        shell: pwsh
 
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: build-windows
           path: SalaryTracker-windows.zip
 
   build-linux:
-    name: Build Linux binary
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - run: uv sync --frozen
 
-      - name: Build binary with PyInstaller
-        run: uv run pyinstaller SalaryTracker.spec
+      - run: uv run pyinstaller SalaryTracker.spec
 
-      - name: Pack Linux binary
-        run: |
+      - run: |
           chmod +x dist/SalaryTracker
           tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
 
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: linux
+          name: build-linux
           path: SalaryTracker-linux.tar.gz
 
-  attach-to-release:
-    name: Attach binaries to GitHub Release
+  attach-binaries:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Show downloaded files
-        run: find artifacts -type f
+      - run: |
+          echo "=== Artifacts ==="
+          find artifacts -type f
 
-      - name: Upload assets to release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/SalaryTracker-windows.zip
-            artifacts/SalaryTracker-linux.tar.gz
+            artifacts/build-windows/SalaryTracker-windows.zip
+            artifacts/build-linux/SalaryTracker-linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
