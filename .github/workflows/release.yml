@@ -1,0 +1,86 @@
+name: Build Binaries for Release
+
+on:
+  release:
+    types: [published]  # Срабатывает ТОЛЬКО при публикации релиза (не черновика)
+
+permissions:
+  contents: write  # Нужно для загрузки файлов в релиз
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            build_cmd: |
+              uv run pyinstaller SalaryTracker.spec --noconfirm
+            archive_cmd: |
+              Compress-Archive -Path "dist\\SalaryTracker.exe" -DestinationPath "SalaryTracker-windows.zip"
+            artifact: SalaryTracker-windows.zip
+          - os: ubuntu-latest
+            name: linux
+            build_cmd: |
+              uv run pyinstaller SalaryTracker.spec --noconfirm
+            archive_cmd: |
+              chmod +x dist/SalaryTracker
+              tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
+            artifact: SalaryTracker-linux.tar.gz
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv (ultra-fast package manager)
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install project dependencies with uv
+        run: |
+          uv sync --frozen  # или uv pip install pyinstaller если нет pyproject.toml
+
+      - name: Build executable
+        run: ${{ matrix.build_cmd }}
+        shell: bash
+
+      - name: Create distributable archive
+        run: ${{ matrix.archive_cmd }}
+        shell: bash
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.name }}
+          path: ${{ matrix.artifact }}
+
+  attach-binaries:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true  # Складывает все артефакты в одну папку
+
+      - name: List downloaded files (debug)
+        run: ls -lh artifacts/
+
+      - name: Attach binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/SalaryTracker-windows.zip
+            artifacts/SalaryTracker-linux.tar.gz
+          # Описание НЕ указываем — оно уже есть в релизе, который вы опубликовали!
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
