@@ -86,7 +86,7 @@ class AddRecordDialog(ModalScreen):
             self._sync_checkboxes(checkbox.id)
 
     def on_button_pressed(self, event):
-        if event.button.id == "save":
+        if event.button.id == "add_record_save":
             date = self.query_one("#date", Input).value.strip()
             amount_str = self.query_one("#amount", Input).value.strip()
 

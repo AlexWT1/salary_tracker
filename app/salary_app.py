@@ -51,7 +51,7 @@ class SalaryApp(App):
     def on_mount(self):
         self.title = "Доходы"
         table = self.query_one(DataTable)
-        table.add_columns("Месяц", "Сумма")
+        table.add_columns("Месяц", "Сумма", "Итого за месяц")
         table.cursor_type = "row"
         table.zebra_stripes = True
         self._update_subtitle()
@@ -67,8 +67,8 @@ class SalaryApp(App):
     def _load_monthly_view(self):
         table = self.query_one(DataTable)
         table.clear()
-        for month, total in self.db.get_monthly_summary():
-            table.add_row(month, f"{total:,.2f} ₽", key=month)
+        for month, total, total_for_display in self.db.get_monthly_summary():
+            table.add_row(month, f"{total:,.2f} ₽", f"{total_for_display:,.2f} ₽", key=month)
 
     def _update_subtitle(self):
         org = self.db.get_organization_name() or ""

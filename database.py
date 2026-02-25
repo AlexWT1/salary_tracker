@@ -92,18 +92,62 @@ class Database:
             session.commit()
 
     def get_monthly_summary(self):
-            """Возвращает список: [(месяц_str, total_sum), ...]"""
-            from collections import defaultdict
-            records = self.get_all_records()
-            monthly = defaultdict(float)
-            for _, date_str, amount, _ in records:
-                try:
-                    dt = datetime.strptime(date_str, "%Y-%m-%d")
-                    month_key = dt.strftime("%Y-%m")
-                    monthly[month_key] += amount
-                except ValueError:
-                    continue
-            return sorted(monthly.items())
+        """
+        Возвращает сводку по месяцам, включая общую сумму и "итоговую сумму за месяц" (аванс текущего + зарплата следующего).
+        Формат: [(месяц_str, total_sum_current_month, total_for_display), ...]
+        """
+        from collections import defaultdict
+        
+        all_records = self.get_all_records()
+        
+        monthly_total = defaultdict(float)
+        monthly_advance = defaultdict(float)
+        monthly_salary = defaultdict(float)
+
+        for _, date_str, amount, category in all_records:
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                month_key = dt.strftime("%Y-%m") # YYYY-MM
+                
+                monthly_total[month_key] += amount
+                if category == "advance":
+                    monthly_advance[month_key] += amount
+                elif category == "salary":
+                    monthly_salary[month_key] += amount
+            except ValueError:
+                continue
+
+        all_months = sorted(list(set(monthly_total.keys()) | set(monthly_advance.keys()) | set(monthly_salary.keys())))
+        
+        result_summary = []
+        for i, month_key in enumerate(all_months):
+            current_month_total = monthly_total[month_key]
+            current_month_advance = monthly_advance[month_key]
+            
+            next_month_salary = 0.0
+            if i + 1 < len(all_months):
+                next_month_key = all_months[i+1]
+                next_month_salary = monthly_salary[next_month_key]
+            elif (dt_current_month := datetime.strptime(month_key, "%Y-%m")).month == datetime.now().month and dt_current_month.year == datetime.now().year: #If it is current month, check one more month. Otherwise, we don't care
+                next_month_year = dt_current_month.year
+                next_month_month = dt_current_month.month + 1
+                if next_month_month > 12:
+                    next_month_month = 1
+                    next_month_year += 1
+                
+                for _, other_date_str, other_amount, other_category in all_records:
+                    try:
+                        other_dt = datetime.strptime(other_date_str, "%Y-%m-%d")
+                        if other_dt.year == next_month_year and other_dt.month == next_month_month and other_category == "salary":
+                            next_month_salary += other_amount
+                    except ValueError:
+                        continue
+
+
+            total_for_display = current_month_advance + next_month_salary
+            result_summary.append((month_key, current_month_total, total_for_display))
+            
+        return result_summary
 
     def get_monthly_breakdown(self, year_month: str):
         """Возвращает словарь: {'salary': X, 'advance': Y, 'other': Z}"""
