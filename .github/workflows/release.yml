@@ -1,98 +1,102 @@
-name: Build Binaries for Release
+name: Build and Attach Binaries to Release V2
 
 on:
   release:
-    types: [published]  # Срабатывает ТОЛЬКО при публикации релиза
+    types: [published]
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            name: windows
-          - os: ubuntu-latest
-            name: linux
-    
-    runs-on: ${{ matrix.os }}
-    
+  build-windows:
+    name: Build Windows binary
+    runs-on: windows-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install uv (ultra-fast package manager)
+      - name: Setup uv
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
-      - name: Install project dependencies with uv
+      - name: Install dependencies
         run: uv sync --frozen
-        shell: bash
 
-      # === СБОРКА: разные оболочки для разных ОС ===
-      - name: Build executable (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build exe with PyInstaller
         run: uv run pyinstaller SalaryTracker.spec
-        shell: pwsh  # PowerShell для Windows
 
-      - name: Build executable (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: uv run pyinstaller SalaryTracker.spec
-        shell: bash  # Bash для Linux
-
-      # === АРХИВАЦИЯ: критически важно — правильные оболочки ===
-      - name: Create distributable archive (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Pack Windows binary (tar)
         run: |
-          Compress-Archive -Path "dist\SalaryTracker.exe" -DestinationPath "SalaryTracker-windows.zip"
-        shell: pwsh  # ← ОБЯЗАТЕЛЬНО pwsh для Compress-Archive
+          tar -C dist -czf SalaryTracker-windows.tar.gz SalaryTracker.exe
 
-      - name: Create distributable archive (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod +x dist/SalaryTracker
-          tar -czf SalaryTracker-linux.tar.gz -C dist SalaryTracker
-        shell: bash
-
-      - name: Upload build artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.name }}
-          path: |
-            SalaryTracker-windows.zip
-            SalaryTracker-linux.tar.gz
+          name: windows
+          path: SalaryTracker-windows.tar.gz
 
-  attach-binaries:
-    needs: build
+  build-linux:
+    name: Build Linux binary
     runs-on: ubuntu-latest
+
     steps:
-      - name: Download all build artifacts
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build binary with PyInstaller
+        run: uv run pyinstaller SalaryTracker.spec
+
+      - name: Pack Linux binary
+        run: |
+          chmod +x dist/SalaryTracker
+          tar -C dist -czf SalaryTracker-linux.tar.gz SalaryTracker
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: SalaryTracker-linux.tar.gz
+
+  attach-to-release:
+    name: Attach binaries to GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Debug artifacts structure
-        run: |
-          echo "=== Artifacts directory ==="
-          ls -R artifacts/
-          echo "=== Checking file existence ==="
-          test -f artifacts/SalaryTracker-windows.zip && echo "✓ Windows ZIP found"
-          test -f artifacts/SalaryTracker-linux.tar.gz && echo "✓ Linux TAR.GZ found"
+      - name: List artifacts
+        run: find artifacts -type f
 
-      - name: Attach binaries to GitHub Release
+      - name: Upload assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/SalaryTracker-windows.zip
+            artifacts/SalaryTracker-windows.tar.gz
             artifacts/SalaryTracker-linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
